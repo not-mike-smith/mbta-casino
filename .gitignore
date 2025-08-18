@@ -143,6 +143,8 @@ venv/
 ENV/
 env.bak/
 venv.bak/
+# but keep the one that simualates the env vars injected into the task container
+!mbta_api/.env
 
 # Spyder project settings
 .spyderproject
