@@ -8,7 +8,6 @@ A simple, engaging web application that allows users to bet virtual tokens on MB
 
 - Web developers reviewing portfolio projects
 - Transit enthusiasts familiar with MBTA reliability patterns
-- Casual users looking for a quick, fun betting experience
 
 ## Core Features
 

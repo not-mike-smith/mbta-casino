@@ -133,7 +133,21 @@ MBTA Casino is a full-stack web application that integrates with the MBTA v3 API
 - Session ID stored in HTTP-only, secure cookie
 - Email serves as unique identifier, linked to session
 - Sessions persist across browser restarts
+- Registering with an existing email re-issues a session for the existing account (`get_or_create` semantics) — no duplicate accounts, no error
 - For v0.1: Simple approach, can enhance in future versions
+
+### Challenge 4: Cross-Origin Requests (Frontend ↔ Backend on Separate Subdomains)
+
+**Problem**: Frontend (`app.domain.com`) and backend API (`api.domain.com`) are on different origins, requiring careful CORS and CSRF configuration.
+
+**Solution Strategy**:
+
+- Frontend and backend share the same registrable domain (eTLD+1), so they are **same-site** — SameSite session cookies work across subdomains
+- Session cookie set with `Domain=.domain.com` to be shared across subdomains
+- CORS configured via `django-cors-headers` to allow the frontend origin explicitly
+- CSRF protection via Django's standard CSRF cookie + `X-CSRFToken` request header (React reads token from cookie and sends in header)
+- In local development: frontend on `localhost:5173` (Vite), backend on `localhost:8000` (Django); CORS allows `http://localhost:5173`
+- In production: CORS allows `https://app.domain.com` only; no wildcard origins
 
 ## Data Models (Conceptual)
 
@@ -164,7 +178,7 @@ MBTA Casino is a full-stack web application that integrates with the MBTA v3 API
 - Actual arrival time (recorded after train arrives)
 - These timestamps are immutable and essential for fair bet resolution
 
-**Important**: A user can only have ONE active bet at a time. Enforce this at database and application level.
+**Important**: A user can only have ONE active bet at a time for v0.1. Enforce this at application level only so user can have multiple concurrent bets in later versions.
 
 ### Train Prediction Entity
 **Purpose**: Track a specific MBTA prediction and its outcome
@@ -340,20 +354,44 @@ frontend/src/
 
 ## Monitoring & Observability
 
-### Key Metrics:
+### Key Metrics
+
 - API endpoint response times and error rates
 - Celery task queue length and processing times
 - MBTA API success/failure rates
 - Database query performance
 - Active bet count and resolution times
 
-### Logging:
-- Structured logging (JSON format recommended)
-- Request tracing with correlation IDs
-- Separate log levels for development vs production
-- Centralized log aggregation (CloudWatch Logs)
+### Logging
 
-### Alerts:
+All application logging uses **`structlog`** for structured, context-aware log output.
+
+**Log format**:
+
+- Production: JSON, one object per line, shipped to CloudWatch Logs
+- Local development: human-readable console output
+
+**Required fields on every log record**:
+
+- `timestamp` — ISO 8601 UTC
+- `level` — `INFO`, `WARNING`, `ERROR`, etc.
+- `message` — human-readable description of the event
+
+**Contextual fields**:
+
+Additional fields such as `user_id`, `bet_id`, and `request_id` are bound at request or task boundaries using `structlog.contextvars.bind_contextvars()` and automatically appear on all log records within that context. Specific fields are determined during implementation.
+
+**Correlation IDs** (planned, may slip for v0.1):
+
+A correlation ID generated at the Django request boundary would be propagated into any Celery tasks spawned during that request, enabling end-to-end tracing of a single user action across both log groups.
+
+**CloudWatch log groups**:
+
+- `/mbta-casino/app` — Django application logs
+- `/mbta-casino/worker` — Celery worker logs
+
+### Alerts
+
 - High error rates from MBTA API
 - Database connection issues
 - Celery worker failures or queue backup
@@ -361,39 +399,68 @@ frontend/src/
 
 ## Development Workflow
 
-### Local Development Setup:
-1. PostgreSQL database (Docker or local install)
-2. Redis instance (Docker or local install)
-3. Django development server
-4. Celery worker process
-5. Vite development server (hot reload)
+### Local Development Setup
 
-### Environment Configuration:
+1. PostgreSQL and Redis via Docker Compose
+2. Django development server (`manage.py runserver`)
+3. Celery worker process
+4. Vite development server with hot reload
+
+### Environment Configuration
+
 - Use environment variables for all config (database URLs, API keys, etc.)
 - Never commit secrets to version control
-- Provide example .env file for developers
+- Provide an example `.env` file for local setup
 
-### Testing Strategy:
-- Unit tests for business logic (bet resolution, balance updates)
-- Integration tests for API endpoints
-- Mock MBTA API calls in tests
-- Consider end-to-end tests for critical user flows
+### Testing Strategy
+
+**Framework**: `pytest` with `pytest-django`.
+
+**Scope**: Unit tests for backend business logic — primarily bet resolution, token balance updates, and betting window validation. MBTA API calls are mocked in tests. Integration tests for API endpoints are desirable but secondary. No fixed coverage target; coverage will be added where confidence is most valuable and mocking is practical.
+
+**Mocking approach**: To be determined during implementation based on what dependency injection patterns emerge naturally in Django. The goal is testable seams around the MBTA API client and background task logic.
 
 ## Deployment Strategy
 
-### Initial Deployment:
-1. Provision AWS infrastructure via CDK
-2. Deploy database and run migrations
-3. Seed station reference data
-4. Deploy backend application
-5. Build and deploy frontend static assets
+### Database Migrations
+
+Django's migration system generates Python migration files from model changes (`manage.py makemigrations`). These files are committed to version control and applied explicitly with `manage.py migrate`.
+
+**Strategy**:
+
+- Migrations are a separate, explicit step — never bundled into the application container entrypoint.
+- The application will start and operate against the database even if migrations are pending. This decouples migration failures from application availability.
+- For v0.1: migrations are run manually before deploying a new application version.
+- Rolling back a migration is done by targeting a specific prior migration name: `manage.py migrate <app_label> <migration_name>`.
+
+### Initial Deployment
+
+1. Provision AWS infrastructure via CDK (`cdk deploy`)
+2. Run database migrations (`manage.py migrate`)
+3. Seed station reference data (Django management command)
+4. Deploy backend application container
+5. Build and deploy frontend static assets to S3
 6. Configure load balancer routing
 
-### Ongoing Updates:
-1. Run database migrations before app updates
-2. Deploy backend with rolling updates (zero downtime)
-3. Build and upload new frontend bundle
-4. Invalidate CDN cache if using CloudFront
+### Ongoing Updates
+
+1. Run database migrations as a separate step before deploying new application code
+2. Deploy backend with rolling updates
+3. Build and upload new frontend bundle to S3
+4. Invalidate CloudFront cache if applicable
+
+### CI/CD
+
+**CI**: GitHub Actions, triggered on push to `main`.
+
+CI checks (to be expanded during implementation):
+
+- `pytest` test suite
+- Linting and formatting checks
+
+**CD**: Manual for v0.1. Deployments are performed by running CDK and application deploy commands locally, following the initial deployment runbook above.
+
+**Environments**: Single production environment for v0.1. A second environment is a future milestone and a test of infrastructure automation completeness.
 
 ## Open Questions & Future Enhancements
 

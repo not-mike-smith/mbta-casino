@@ -7,25 +7,45 @@ This document defines the database schema for the MBTA Casino application. The s
 ## Design Principles
 
 ### Primary Keys
+
 - **Default**: Auto-incrementing unsigned integers for all tables
 - **Exception**: Use natural keys (like MBTA IDs) where they serve as the idiomatic identifier
 - **Future Consideration**: If bet IDs are exposed in URLs and creation order should be obfuscated, consider UUIDs
 
 ### Timestamps
+
 - All entities include `created_at` timestamp
 - Mutable entities include `updated_at` timestamp
 - Use timezone-aware timestamps (UTC)
 
 ### Indexing
+
 - Index all foreign keys
 - Index fields used in WHERE clauses frequently
 - Composite indexes for common query patterns
 
 ### Constraints
+
 - NOT NULL for required fields
 - UNIQUE constraints where business logic demands uniqueness
 - CHECK constraints for data validation (e.g., positive token amounts)
 - Foreign key constraints with appropriate CASCADE/PROTECT rules
+
+## Application-Level Business Rules
+
+These rules are enforced in backend application code, **not** at the database level, so they can be changed without a schema migration.
+
+### One Active Bet Per User (v0.1)
+
+A user may only have one bet with `status = ACTIVE` at a time. The bet-placement endpoint checks for an existing active bet and rejects new placements if one is found. This is intentionally **not** a DB constraint so that future versions can allow multiple concurrent bets with a code-only change.
+
+### Betting Window Cutoff
+
+A prediction is only bettable if the predicted arrival time is at least `BETTING_WINDOW_MINUTES` in the future (default: **2 minutes**). Predictions inside this window are filtered out of the bettable list and rejected at placement time. This value must be a named application setting, not a magic number.
+
+### Push Tolerance
+
+When resolving a bet, if the absolute difference between `actual_arrival_time` and `predicted_arrival_time` is within `PUSH_TOLERANCE_SECONDS` (default: **30 seconds**), the bet is resolved as a PUSH. This value must be a named application setting to allow tuning once real polling precision is understood.
 
 ## Entity Relationship Diagram
 
@@ -34,41 +54,41 @@ This document defines the database schema for the MBTA Casino application. The s
 │  user_account   │
 │  - id (PK)      │
 │  - email        │◄───────┐
-│  - token_balance│         │
-│  - session_key  │         │
-└─────────────────┘         │
-                            │
-                            │ (1:N)
-                            │
-                      ┌─────┴──────────┐
-                      │      bet       │
-                      │  - id (PK)     │
-                      │  - user_id (FK)│
-                      │  - prediction_id│
-                      │  - amount      │
-                      │  - direction   │
-                      │  - status      │
-                      └─────┬──────────┘
-                            │
-                            │ (N:1)
-                            │
-                      ┌─────▼──────────────┐
-                      │ train_prediction   │
-                      │  - id (PK)         │
-                      │  - station_id (FK) │
-                      │  - mbta_trip_id    │
-                      │  - mbta_prediction_id│
-                      │  - predicted_arrival│
-                      └─────┬──────────────┘
-                            │
-                            │ (N:1)
-                            │
-                      ┌─────▼──────────┐
-                      │    station     │
-                      │  - id (PK)     │
-                      │  - mbta_stop_id│
-                      │  - name        │
-                      └────────────────┘
+│  - token_balance│        │
+│  - session_key  │        │
+└─────────────────┘        │
+                           │
+                           │ (1:N)
+                           │
+                     ┌─────┴──────────┐
+                     │      bet       │
+                     │  - id (PK)     │
+                     │  - user_id (FK)│
+                     │  - prediction_id│
+                     │  - amount      │
+                     │  - direction   │
+                     │  - status      │
+                     └─────┬──────────┘
+                           │
+                           │ (N:1)
+                           │
+                     ┌─────▼──────────────┐
+                     │ train_prediction   │
+                     │  - id (PK)         │
+                     │  - station_id (FK) │
+                     │  - mbta_trip_id    │
+                     │  - mbta_prediction_id│
+                     │  - predicted_arrival│
+                     └─────┬──────────────┘
+                           │
+                           │ (N:1)
+                           │
+                     ┌─────▼──────────┐
+                     │    station     │
+                     │  - id (PK)     │
+                     │  - mbta_stop_id│
+                     │  - name        │
+                     └────────────────┘
 ```
 
 ## Table Definitions
@@ -89,13 +109,16 @@ Represents a player account in the system.
 | updated_at | timestamp | NOT NULL | Last modification time |
 
 **Indexes**:
+
 - Primary key on `id`
 - Unique index on `email`
 - Index on `session_key` (for session lookup)
 
 **Notes**:
+
 - Session key links to Django's session framework
 - Token balance cannot go negative (CHECK constraint)
+- Registering with an existing email re-issues a session for that account (`get_or_create` semantics) — no error, no duplicate
 - For v0.1, no password or email verification needed
 - New accounts start with 1,000 tokens
 
@@ -121,10 +144,12 @@ Represents a single wager on a train prediction.
 | resolved_at | timestamp | NULLABLE | When bet was resolved (null if still active) |
 
 **Enums**:
+
 - **direction**: `BEFORE`, `AFTER`
 - **status**: `ACTIVE`, `WON`, `LOST`, `PUSH`, `VOID`
 
 **Indexes**:
+
 - Primary key on `id`
 - Foreign key index on `user_account_id`
 - Foreign key index on `train_prediction_id`
@@ -132,16 +157,18 @@ Represents a single wager on a train prediction.
 - Index on `placed_at` (for history queries)
 
 **Status Values**:
+
 - **ACTIVE**: Bet placed, waiting for train arrival
 - **WON**: User's prediction was correct
 - **LOST**: User's prediction was incorrect
-- **PUSH**: Train arrived exactly on time, wager returned
+- **PUSH**: Actual arrival within `PUSH_TOLERANCE_SECONDS` of predicted time; wager returned
 - **VOID**: Bet cancelled due to train cancellation or system error
 
 **Notes**:
+
 - `predicted_arrival_time` is a snapshot captured at bet placement, ensuring fair resolution even if MBTA later updates the prediction
 - `actual_arrival_time` and `resolved_at` are populated when the bet is resolved
-- For v0.1 UI simplicity, users can only place one bet at a time (enforced in frontend only)
+- One active bet per user is enforced in backend application code, not at the DB level (see Application-Level Business Rules)
 - Consider UUID for PK if bet IDs are exposed in shareable URLs
 
 ---
@@ -168,6 +195,7 @@ Represents a specific MBTA train prediction that can be bet on or is being track
 | updated_at | timestamp | NOT NULL | Last update from MBTA API |
 
 **Indexes**:
+
 - Primary key on `id`
 - Unique index on `mbta_prediction_id`
 - Foreign key index on `station_id`
@@ -176,8 +204,9 @@ Represents a specific MBTA train prediction that can be bet on or is being track
 - Index on `updated_at` (for cleanup tasks)
 
 **Notes**:
+
 - Multiple bets can reference the same prediction (many-to-one relationship)
-- `mbta_prediction_id` uniquely identifies the prediction from MBTA API
+- `mbta_prediction_id` is treated as stable for the life of a trip; mutable prediction tracking is out of scope for v0.1
 - `predicted_arrival` is mutable and updates as MBTA updates the prediction
 - `actual_arrival` is set once when arrival is detected
 - `has_arrived` flag enables efficient querying of unresolved predictions
@@ -202,17 +231,20 @@ Reference data for MBTA subway stations.
 | created_at | timestamp | NOT NULL | When record was created |
 
 **Indexes**:
+
 - Primary key on `id`
 - Unique index on `mbta_stop_id`
 - Index on `name` (for search/autocomplete)
 
 **Notes**:
+
 - Only subway stations included (no bus, commuter rail, ferry)
 - `route_ids` is JSON array like `["Red", "Orange"]` for transfer stations
 - Reference data seeded from MBTA stops API during deployment
 - Data is relatively static, updates handled via manual migrations
 
 **Sample Data**:
+
 ```json
 {
   "mbta_stop_id": "place-pktrm",
@@ -226,17 +258,20 @@ Reference data for MBTA subway stations.
 ## Relationships
 
 ### user_account → bet (One-to-Many)
+
 - One user can have many bets
 - Foreign key: `bet.user_account_id` → `user_account.id`
 - On delete: PROTECT (cannot delete user with bets)
 
 ### bet → train_prediction (Many-to-One)
+
 - Many bets can reference the same prediction
 - Each bet references exactly one prediction
 - Foreign key: `bet.train_prediction_id` → `train_prediction.id`
 - On delete: PROTECT (cannot delete prediction with bets)
 
 ### train_prediction → station (Many-to-One)
+
 - Many predictions for the same station
 - Each prediction is for exactly one station
 - Foreign key: `train_prediction.station_id` → `station.id`
@@ -245,31 +280,37 @@ Reference data for MBTA subway stations.
 ## Database Constraints
 
 **user_account**:
-- `CHECK (token_balance >= 0)` - prevent negative balances
-- `UNIQUE (email)` - one account per email
-- `UNIQUE (session_key)` - one session per key
+
+- `CHECK (token_balance >= 0)` — prevent negative balances
+- `UNIQUE (email)` — one account per email
+- `UNIQUE (session_key)` — one session per key
 
 **bet**:
-- `CHECK (amount > 0)` - must bet at least 1 token
-- `CHECK (direction IN ('BEFORE', 'AFTER'))` - only valid directions
-- `CHECK (status IN ('ACTIVE', 'WON', 'LOST', 'PUSH', 'VOID'))` - only valid statuses
+
+- `CHECK (amount > 0)` — must bet at least 1 token
+- `CHECK (direction IN ('BEFORE', 'AFTER'))` — only valid directions
+- `CHECK (status IN ('ACTIVE', 'WON', 'LOST', 'PUSH', 'VOID'))` — only valid statuses
 - Foreign key constraints with PROTECT on delete
+- No unique constraint on `(user_account_id, status='ACTIVE')` — one-active-bet rule is application-enforced only
 
 **train_prediction**:
-- `UNIQUE (mbta_prediction_id)` - no duplicate MBTA predictions
-- `CHECK (direction_id IN (0, 1))` - only valid MBTA directions
+
+- `UNIQUE (mbta_prediction_id)` — no duplicate MBTA predictions
+- `CHECK (direction_id IN (0, 1))` — only valid MBTA directions
 - Foreign key to station with PROTECT
 
 **station**:
-- `UNIQUE (mbta_stop_id)` - no duplicate stations
+
+- `UNIQUE (mbta_stop_id)` — no duplicate stations
 
 ## Seed Data
 
-Station reference data should be loaded from MBTA stops API during initial deployment.
+Station reference data should be loaded from the MBTA stops API during initial deployment via a Django management command.
 
 ## Summary
 
 This schema provides a solid foundation for v0.1:
+
 - **user_account**: Manages users and token balances
 - **bet**: Tracks wagers with immutable prediction snapshots
 - **train_prediction**: Tracks MBTA data and arrival detection

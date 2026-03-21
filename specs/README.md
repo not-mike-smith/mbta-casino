@@ -43,7 +43,7 @@ This directory contains the technical and product specifications for the MBTA Ca
 - Email verification
 - User account recovery
 - Multiple concurrent bets
-- Token refills (planned for v0.2)
+- Token refills
 - Bus, commuter rail, or ferry predictions
 - Social features or leaderboards
 - Payment integration
