@@ -1,4 +1,5 @@
-from django.urls import path
+from django.urls import include, path
 
-# API routes will be registered here as each app is implemented.
-urlpatterns = []
+urlpatterns = [
+    path("", include("users.urls")),
+]

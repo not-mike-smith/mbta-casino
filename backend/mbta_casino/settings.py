@@ -30,6 +30,7 @@ WSGI_APPLICATION = "mbta_casino.wsgi.application"
 
 INSTALLED_APPS = [
     "django.contrib.contenttypes",
+    "django.contrib.auth",
     "django.contrib.sessions",
     "rest_framework",
     "corsheaders",
