@@ -120,6 +120,10 @@ USE_TZ = True  # all timestamps are timezone-aware
 # requires only a redeploy, not a migration.
 # ---------------------------------------------------------------------------
 
+# MBTA v3 API key. Optional for low-volume local dev; required in production.
+# Get one at https://api-v3.mbta.com/
+MBTA_API_KEY: str = os.environ.get("MBTA_API_KEY", "")
+
 # How many minutes before predicted arrival a prediction stops being bettable.
 BETTING_WINDOW_MINUTES: int = int(os.environ.get("BETTING_WINDOW_MINUTES", "2"))
 
