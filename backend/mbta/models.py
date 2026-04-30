@@ -2,6 +2,7 @@ from django.db import models
 
 
 class TrainPrediction(models.Model):
+    id: int
     station = models.ForeignKey(
         "stations.Station",
         on_delete=models.PROTECT,

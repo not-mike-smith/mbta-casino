@@ -2,6 +2,7 @@ from django.db import models
 
 
 class Station(models.Model):
+    id: int
     mbta_stop_id = models.CharField(max_length=64, unique=True)
     name = models.CharField(max_length=128)
     # JSON array of MBTA route IDs serving this station, e.g. ["Red", "Green-B"]

@@ -2,6 +2,7 @@ from django.db import models
 
 
 class UserAccount(models.Model):
+    id: int
     email = models.EmailField(unique=True)
     token_balance = models.IntegerField(default=1000)
     session_key = models.CharField(max_length=40, unique=True, null=True, blank=True)

@@ -2,6 +2,7 @@ from django.db import models
 
 
 class Bet(models.Model):
+    id: int
 
     class Direction(models.TextChoices):
         BEFORE = "BEFORE"
