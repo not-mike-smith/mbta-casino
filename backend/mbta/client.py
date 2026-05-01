@@ -41,6 +41,7 @@ class MbtaPrediction:
     mbta_route_id: str
     mbta_stop_id: str
     direction_id: int
+    direction_label: str
     stop_sequence: Optional[int]
     predicted_arrival: datetime
 
@@ -57,20 +58,30 @@ class MbtaClient:
 
         Filters to subway route types only (Green, Red, Orange, Blue).
         Predictions with no arrival time (first stop of a trip) are skipped.
+        Trip headsigns (e.g. "Alewife") are fetched via include=trip.
         """
         response = self._session.get(
             f"{MBTA_API_BASE_URL}/predictions",
             params={
                 "filter[stop]": mbta_stop_id,
                 "filter[route_type]": SUBWAY_ROUTE_TYPES,
+                "include": "trip",
             },
             timeout=10,
         )
         self._raise_for_status(response)
 
+        body = response.json()
+
+        # Build trip_id → headsign lookup from the sideloaded trip resources.
+        trip_headsigns: dict[str, str] = {}
+        for included in body.get("included", []):
+            if included.get("type") == "trip":
+                trip_headsigns[included["id"]] = included.get("attributes", {}).get("headsign", "")
+
         results = []
-        for item in response.json().get("data", []):
-            prediction = self._parse_prediction(item)
+        for item in body.get("data", []):
+            prediction = self._parse_prediction(item, trip_headsigns)
             if prediction is not None:
                 results.append(prediction)
 
@@ -104,13 +115,14 @@ class MbtaClient:
         logger.debug("mbta_stops_fetched", route=route_id, count=len(results))
         return results
 
-    def _parse_prediction(self, item: dict) -> Optional[MbtaPrediction]:
+    def _parse_prediction(self, item: dict, trip_headsigns: dict[str, str]) -> Optional[MbtaPrediction]:
         attrs = item.get("attributes", {})
         relationships = item.get("relationships", {})
 
         arrival_time_str: Optional[str] = attrs.get("arrival_time")
         if not arrival_time_str:
             # First stop of a trip has no arrival time — skip it.
+            # TODO(future): surface these predictions as "not yet bettable" rather than hiding them.
             return None
 
         try:
@@ -133,6 +145,7 @@ class MbtaClient:
             mbta_route_id=route_id,
             mbta_stop_id=stop_id,
             direction_id=attrs.get("direction_id", 0),
+            direction_label=trip_headsigns.get(trip_id, ""),
             stop_sequence=attrs.get("stop_sequence"),
             predicted_arrival=predicted_arrival,
         )

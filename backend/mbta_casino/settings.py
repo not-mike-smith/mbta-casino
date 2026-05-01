@@ -131,6 +131,25 @@ BETTING_WINDOW_MINUTES: int = int(os.environ.get("BETTING_WINDOW_MINUTES", "2"))
 PUSH_TOLERANCE_SECONDS: int = int(os.environ.get("PUSH_TOLERANCE_SECONDS", "30"))
 
 # ---------------------------------------------------------------------------
+# Celery
+# ---------------------------------------------------------------------------
+
+CELERY_BROKER_URL: str = os.environ.get("REDIS_URL", "redis://localhost:6379/0")
+CELERY_RESULT_BACKEND: str = os.environ.get("REDIS_URL", "redis://localhost:6379/0")
+CELERY_TIMEZONE = "UTC"
+CELERY_TASK_SERIALIZER = "json"
+CELERY_RESULT_SERIALIZER = "json"
+CELERY_ACCEPT_CONTENT = ["json"]
+
+# Periodic task schedule (used by celery beat).
+CELERY_BEAT_SCHEDULE = {
+    "poll-all-station-predictions": {
+        "task": "mbta.tasks.poll_all_station_predictions",
+        "schedule": 60.0,  # seconds
+    },
+}
+
+# ---------------------------------------------------------------------------
 # Structured logging (structlog)
 #
 # structlog is the Python equivalent of .NET's structured logging.

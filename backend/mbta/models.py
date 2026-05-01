@@ -12,6 +12,7 @@ class TrainPrediction(models.Model):
     mbta_trip_id = models.CharField(max_length=128)
     mbta_route_id = models.CharField(max_length=32)
     direction_id = models.SmallIntegerField()
+    direction_label = models.CharField(max_length=64, blank=True, default="")
     stop_sequence = models.IntegerField(null=True, blank=True)
     predicted_arrival = models.DateTimeField()
     has_arrived = models.BooleanField(default=False)

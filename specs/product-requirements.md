@@ -16,6 +16,7 @@ A simple, engaging web application that allows users to bet virtual tokens on MB
 **Description**: Minimal friction account creation using only an email address.
 
 **Requirements**:
+
 - User provides email address only (no password)
 - No email verification required for v0.1
 - System creates session and issues browser cookie
@@ -29,6 +30,7 @@ A simple, engaging web application that allows users to bet virtual tokens on MB
 **Description**: Users browse MBTA subway stations to find trains to bet on.
 
 **Requirements**:
+
 - Display all MBTA subway lines (Red, Orange, Blue, Green-B, Green-C, Green-D, Green-E)
 - Allow selection of specific station
 - Show only stations with active predictions available
@@ -41,6 +43,7 @@ A simple, engaging web application that allows users to bet virtual tokens on MB
 **Description**: Display real-time MBTA predictions for selected station.
 
 **Requirements**:
+
 - Show list of upcoming train arrivals at selected station/line
 - Display predicted arrival time in clear, readable format (e.g., "Arrives at 2:45 PM" and "in 3 minutes")
 - Show train direction (Inbound/Outbound or terminal destination)
@@ -55,6 +58,7 @@ A simple, engaging web application that allows users to bet virtual tokens on MB
 **Description**: Users wager tokens on whether a train will arrive before or after its predicted time.
 
 **Requirements**:
+
 - User can only have ONE active bet at a time
 - User selects "Before" or "After" predicted arrival time
 - User enters whole-number token amount to wager (minimum: 1, maximum: current balance)
@@ -68,6 +72,7 @@ A simple, engaging web application that allows users to bet virtual tokens on MB
 - User cannot place another bet until current bet resolves
 
 **Betting Rules**:
+
 - If train arrives BEFORE predicted time and user bet "Before": User wins (2x tokens)
 - If train arrives AFTER predicted time and user bet "After": User wins (2x tokens)
 - If train arrives EXACTLY at predicted time: Push (user gets original wager back)
@@ -81,6 +86,7 @@ A simple, engaging web application that allows users to bet virtual tokens on MB
 **Description**: Users can see their current active bet and its real-time status.
 
 **Requirements**:
+
 - Display prominently on main screen when user has active bet
 - Show:
   - Station/line/direction
@@ -100,6 +106,7 @@ A simple, engaging web application that allows users to bet virtual tokens on MB
 **Description**: System automatically resolves bets when trains arrive and credits/debits tokens.
 
 **Requirements**:
+
 - System tracks actual arrival time of train
 - Compares actual arrival to original predicted time (from when bet was placed)
 - Determines outcome (Win/Loss/Push) based on betting rules
@@ -119,6 +126,7 @@ A simple, engaging web application that allows users to bet virtual tokens on MB
 **Description**: Users can review their past bets and outcomes.
 
 **Requirements**:
+
 - Display list of all past bets (most recent first)
 - For each bet show:
   - Date/time of bet
@@ -138,6 +146,7 @@ A simple, engaging web application that allows users to bet virtual tokens on MB
 **Description**: Always show current token balance prominently.
 
 **Requirements**:
+
 - Display token balance on all screens
 - Update in real-time as bets resolve
 - Show clear indication when balance is low (< 100 tokens)
@@ -224,7 +233,7 @@ A simple, engaging web application that allows users to bet virtual tokens on MB
 ## Risks and Mitigations
 
 | Risk | Impact | Mitigation |
-|------|--------|------------|
+| ---- | ------ | ---------- |
 | MBTA API rate limits exceeded | High | Implement caching, limit prediction refresh rate |
 | MBTA doesn't provide historical arrival data | High | Build real-time tracking system, store arrival times ourselves |
 | Train predictions frequently updated/cancelled | Medium | Handle prediction changes, cancel bets if train cancelled |
