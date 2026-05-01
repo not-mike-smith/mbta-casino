@@ -6,7 +6,7 @@ MBTA Casino is a full-stack web application that integrates with the MBTA v3 API
 
 ## Architecture Diagram
 
-```
+```text
 ┌─────────────────┐
 │   Browser       │
 │  (React/Vite)   │
@@ -50,6 +50,7 @@ MBTA Casino is a full-stack web application that integrates with the MBTA v3 API
 ## Technology Stack
 
 ### Frontend
+
 - **Framework**: React 18+ with TypeScript
 - **Build Tool**: Vite
 - **State Management**: React Query for server state, Context API for auth
@@ -58,6 +59,7 @@ MBTA Casino is a full-stack web application that integrates with the MBTA v3 API
 - **HTTP Client**: Standard HTTP library
 
 ### Backend
+
 - **Framework**: Django with Django REST Framework
 - **Task Queue**: Celery with Redis broker
 - **Authentication**: Django sessions with cookie-based auth
@@ -65,10 +67,12 @@ MBTA Casino is a full-stack web application that integrates with the MBTA v3 API
 - **WSGI Server**: Production WSGI server (e.g., Gunicorn)
 
 ### Data Layer
+
 - **Primary Database**: PostgreSQL on AWS RDS
 - **Cache/Message Broker**: Redis (for Celery and optional caching)
 
 ### Infrastructure
+
 - **Cloud Provider**: AWS
 - **Infrastructure as Code**: AWS CDK (Python)
 - **Compute**: Container orchestration (ECS) or VM-based
@@ -84,31 +88,29 @@ MBTA Casino is a full-stack web application that integrates with the MBTA v3 API
 
 **Solution Strategy**: Implement real-time arrival tracking using background workers that poll the MBTA API.
 
-#### Approach:
+#### Approach
 
-**1. Capture Prediction Snapshot at Bet Time**
-- Store the original prediction details when user places bet
-- Include: trip identifier, stop identifier, predicted arrival time, bet placement timestamp
-- This creates an immutable record of what the user bet against
+1. Capture Prediction Snapshot at Bet Time
+   - Store the original prediction details when user places bet
+   - Include: trip identifier, stop identifier, predicted arrival time, bet placement timestamp
+   - This creates an immutable record of what the user bet against
+2. Continuous Monitoring
+   - Background workers poll MBTA predictions endpoint at regular intervals (every 15-30 seconds)
+   - Track all predictions associated with active bets
+   - Monitor how predictions change as trains approach stations
+3. Arrival Detection
+   - Use multiple heuristics to detect when train has arrived:
+     - **Disappearance**: Prediction removed from API response (most reliable indicator)
+     - **Time-based**: Current time exceeds predicted time + reasonable buffer
+     - **Vehicle tracking**: Query vehicle positions to confirm vehicle passed the stop
+   - Combine signals to determine best estimate of actual arrival time
+4. Bet Resolution
+   - Compare actual arrival time to originally predicted time
+   - Apply betting rules: before/after/exact match
+   - Update bet status and user token balance
 
-**2. Continuous Monitoring**
-- Background workers poll MBTA predictions endpoint at regular intervals (every 15-30 seconds)
-- Track all predictions associated with active bets
-- Monitor how predictions change as trains approach stations
+#### Trade-offs
 
-**3. Arrival Detection**
-- Use multiple heuristics to detect when train has arrived:
-  - **Disappearance**: Prediction removed from API response (most reliable indicator)
-  - **Time-based**: Current time exceeds predicted time + reasonable buffer
-  - **Vehicle tracking**: Query vehicle positions to confirm vehicle passed the stop
-- Combine signals to determine best estimate of actual arrival time
-
-**4. Bet Resolution**
-- Compare actual arrival time to originally predicted time
-- Apply betting rules: before/after/exact match
-- Update bet status and user token balance
-
-#### Trade-offs:
 - Arrival times are estimates, not perfectly precise measurements
 - Acceptable for demonstration/entertainment purposes
 - Cancelled trains or missing data handled as edge cases (void bet or push)
@@ -118,6 +120,7 @@ MBTA Casino is a full-stack web application that integrates with the MBTA v3 API
 **Problem**: MBTA API allows 1,000 requests per minute. With multiple users and frequent background polling, we could exceed this limit.
 
 **Solution Strategy**:
+
 - **Batch Requests**: Single poller fetches predictions for multiple stops in one request
 - **Caching**: Cache prediction responses for 15-30 seconds to reduce redundant calls
 - **Smart Polling**: Only poll for stops with active bets
@@ -129,6 +132,7 @@ MBTA Casino is a full-stack web application that integrates with the MBTA v3 API
 **Problem**: Need to maintain user sessions without passwords, using only email and cookies.
 
 **Solution Strategy**:
+
 - Django session framework stores session data in database
 - Session ID stored in HTTP-only, secure cookie
 - Email serves as unique identifier, linked to session
@@ -152,9 +156,11 @@ MBTA Casino is a full-stack web application that integrates with the MBTA v3 API
 ## Data Models (Conceptual)
 
 ### User Entity
+
 **Purpose**: Represent a player account
 
 **Key Data**:
+
 - Unique email address (identifier)
 - Current token balance (starts at 1,000)
 - Session reference for cookie-based auth
@@ -163,9 +169,11 @@ MBTA Casino is a full-stack web application that integrates with the MBTA v3 API
 **Important**: Need to prevent duplicate emails and ensure token balance cannot go negative.
 
 ### Bet Entity
+
 **Purpose**: Record of a single wager
 
 **Key Data**:
+
 - Reference to user who placed bet
 - Reference to train prediction being bet on
 - Token amount wagered (must be whole number)
@@ -174,6 +182,7 @@ MBTA Casino is a full-stack web application that integrates with the MBTA v3 API
 - Timestamps for placement and resolution
 
 **Critical Snapshot Data**:
+
 - Original predicted arrival time (captured at bet placement)
 - Actual arrival time (recorded after train arrives)
 - These timestamps are immutable and essential for fair bet resolution
@@ -181,9 +190,11 @@ MBTA Casino is a full-stack web application that integrates with the MBTA v3 API
 **Important**: A user can only have ONE active bet at a time for v0.1. Enforce this at application level only so user can have multiple concurrent bets in later versions.
 
 ### Train Prediction Entity
+
 **Purpose**: Track a specific MBTA prediction and its outcome
 
 **Key Data**:
+
 - MBTA identifiers (prediction ID, trip ID, stop ID, route ID)
 - Direction and stop sequence information
 - Predicted arrival time (updates as MBTA updates prediction)
@@ -194,9 +205,11 @@ MBTA Casino is a full-stack web application that integrates with the MBTA v3 API
 **Important**: This entity gets updated frequently by background workers. Need to track when prediction was first created vs. its current state.
 
 ### Station Reference Entity
+
 **Purpose**: Catalog of MBTA subway stations
 
 **Key Data**:
+
 - MBTA stop identifier
 - Human-readable station name
 - Associated route(s) (e.g., Red Line, Green Line)
@@ -205,6 +218,7 @@ MBTA Casino is a full-stack web application that integrates with the MBTA v3 API
 **Important**: This is mostly static reference data, loaded during initial deployment. Can be seeded from MBTA stops API.
 
 ### Relationships
+
 - User has many Bets (one-to-many)
 - Bet references one Train Prediction (many-to-one)
 - Train Prediction references one Station (many-to-one)
@@ -213,33 +227,39 @@ MBTA Casino is a full-stack web application that integrates with the MBTA v3 API
 ## API Endpoints (REST)
 
 ### Authentication & User Management
+
 - Register new user (email only)
 - Logout current user
 - Get current user profile
 - Get user token balance
 
 ### Stations & Predictions
+
 - List available subway stations
 - Get current predictions for a specific station
 - Predictions should be filtered to only show bettable trains (not too soon to arrival)
 
 ### Betting
+
 - Place a new bet (validates one-active-bet rule, sufficient balance)
 - Get user's current active bet (returns null if none)
 - Get user's betting history (paginated list of past bets)
 
 ### Real-time Updates (Future Enhancement)
+
 - For v0.1: Frontend polls for active bet status
 - For v0.2: Consider WebSockets for push updates
 
 ## Background Workers
 
 ### Task: Monitor Active Predictions
+
 **Purpose**: Poll MBTA API for predictions related to active bets
 
 **Frequency**: Every 15-30 seconds (balance between freshness and rate limits)
 
 **Logic**:
+
 1. Query database for all active bets
 2. Extract unique stops/routes to minimize API calls
 3. Fetch current predictions from MBTA API
@@ -248,11 +268,13 @@ MBTA Casino is a full-stack web application that integrates with the MBTA v3 API
 6. Trigger bet resolution for arrived trains
 
 ### Task: Resolve Bet
+
 **Purpose**: Determine outcome and update balances
 
 **Trigger**: When arrival detection signals train has arrived
 
 **Logic**:
+
 1. Retrieve bet and its snapshot of predicted time
 2. Compare actual arrival to predicted arrival
 3. Apply betting rules (before/after/push)
@@ -261,6 +283,7 @@ MBTA Casino is a full-stack web application that integrates with the MBTA v3 API
 6. Record resolution timestamp
 
 ### Task: Cleanup Stale Data
+
 **Purpose**: Remove old prediction data no longer needed
 
 **Frequency**: Periodic (hourly or daily)
@@ -270,7 +293,8 @@ MBTA Casino is a full-stack web application that integrates with the MBTA v3 API
 ## Application Structure
 
 ### Django Backend Organization
-```
+
+```text
 mbta_casino/
 ├── apps/
 │   ├── users/          # User models, auth logic
@@ -286,7 +310,8 @@ mbta_casino/
 **Design Principle**: Separate concerns into focused apps. The `mbta` app encapsulates all external API interaction and arrival tracking complexity.
 
 ### React Frontend Organization
-```
+
+```text
 frontend/src/
 ├── components/
 │   ├── auth/           # Registration form
@@ -303,7 +328,8 @@ frontend/src/
 
 ## AWS Infrastructure
 
-### Core Resources:
+### Core Resources
+
 1. **VPC**: Network isolation with public/private subnets
 2. **RDS PostgreSQL**: Managed database service
 3. **Container Service**: Run Django application (ECS Fargate or similar)
@@ -314,7 +340,8 @@ frontend/src/
 8. **Secrets Manager**: Secure storage for MBTA API key, database credentials
 9. **CloudWatch**: Logging and monitoring
 
-### Deployment Architecture:
+### Deployment Architecture
+
 - **Backend**: Containerized Django app running on ECS with Celery workers
 - **Frontend**: Static files in S3, served via CloudFront or ALB
 - **Database**: RDS in private subnet, accessed only by backend
@@ -323,23 +350,27 @@ frontend/src/
 ## Security Considerations
 
 ### Authentication & Sessions
+
 - HTTP-only cookies prevent XSS attacks
 - Secure flag ensures HTTPS-only transmission
 - CSRF protection via Django middleware
 - Rate limiting on sensitive endpoints
 
 ### Input Validation
+
 - Validate all user inputs server-side
 - Sanitize email addresses
 - Enforce positive integer token amounts
 - Check user balance before accepting bets
 
 ### External API
+
 - Store MBTA API key securely (never in code)
 - Make MBTA calls only from backend (never expose key to frontend)
 - Implement retry logic with backoff for resilience
 
 ### Database
+
 - Use ORM to prevent SQL injection
 - Implement proper indexing for query performance
 - Consider connection pooling for scalability

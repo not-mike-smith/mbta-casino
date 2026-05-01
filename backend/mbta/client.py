@@ -27,6 +27,14 @@ class MbtaAuthError(MbtaApiError):
 
 
 @dataclass
+class MbtaStop:
+    mbta_stop_id: str
+    name: str
+    latitude: Optional[float]
+    longitude: Optional[float]
+
+
+@dataclass
 class MbtaPrediction:
     mbta_prediction_id: str
     mbta_trip_id: str
@@ -67,6 +75,33 @@ class MbtaClient:
                 results.append(prediction)
 
         logger.debug("mbta_predictions_fetched", stop=mbta_stop_id, count=len(results))
+        return results
+
+    def get_stops_for_route(self, route_id: str) -> list[MbtaStop]:
+        """Fetch all parent stations (location_type=1) serving a route."""
+        response = self._session.get(
+            f"{MBTA_API_BASE_URL}/stops",
+            params={
+                "filter[route]": route_id,
+                "filter[location_type]": "1",
+            },
+            timeout=10,
+        )
+        self._raise_for_status(response)
+
+        results = []
+        for item in response.json().get("data", []):
+            attrs = item.get("attributes", {})
+            results.append(
+                MbtaStop(
+                    mbta_stop_id=item["id"],
+                    name=attrs.get("name", ""),
+                    latitude=attrs.get("latitude"),
+                    longitude=attrs.get("longitude"),
+                )
+            )
+
+        logger.debug("mbta_stops_fetched", route=route_id, count=len(results))
         return results
 
     def _parse_prediction(self, item: dict) -> Optional[MbtaPrediction]:
