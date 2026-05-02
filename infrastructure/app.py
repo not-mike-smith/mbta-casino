@@ -4,8 +4,8 @@ import os
 import aws_cdk as cdk
 from dotenv import load_dotenv
 
-from infrastructure.app_stack import AppStack
-from infrastructure.deployment_bootstrap_stack import DeploymentBootstrapStack
+from app_stack import AppStack
+from deployment_bootstrap_stack import DeploymentBootstrapStack
 
 load_dotenv()
 
