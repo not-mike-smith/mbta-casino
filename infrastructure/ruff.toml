@@ -1,0 +1,11 @@
+target-version = "py313"
+line-length = 120
+
+[lint]
+# E/W: pycodestyle errors and warnings
+# F: pyflakes (undefined names, unused imports)
+# I: isort (import ordering)
+select = ["E", "W", "F", "I"]
+
+[format]
+line-ending = "lf"

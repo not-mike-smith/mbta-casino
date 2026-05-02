@@ -171,8 +171,8 @@ class AppStack(Stack):
         # Secrets injected as environment variables at container start.
         # CDK automatically grants the task execution role read access to each secret.
         shared_secrets = {
-            "DJANGO_SECRET_KEY": ecs.Secret.from_secrets_manager(django_secret_key),
-            "MBTA_API_KEY": ecs.Secret.from_secrets_manager(mbta_api_key),
+            "DJANGO_SECRET_KEY": ecs.Secret.from_secrets_manager(django_secret_key),  # type: ignore[arg-type]
+            "MBTA_API_KEY": ecs.Secret.from_secrets_manager(mbta_api_key),  # type: ignore[arg-type]
             "DB_USER": ecs.Secret.from_secrets_manager(db_instance.secret, "username"),
             "DB_PASSWORD": ecs.Secret.from_secrets_manager(db_instance.secret, "password"),
         }
@@ -184,8 +184,9 @@ class AppStack(Stack):
             image=ecs.ContainerImage.from_ecr_repository(repository, tag="latest"),
             environment={
                 **shared_environment,
-                # ALLOWED_HOSTS must include the ALB hostname
-                "DJANGO_ALLOWED_HOSTS": alb.load_balancer_dns_name,
+                # * is safe here: ECS tasks are in private subnets, only reachable via the ALB.
+                # The ALB health checker hits the container IP directly, so we can't enumerate hosts.
+                "DJANGO_ALLOWED_HOSTS": "*",
             },
             secrets=shared_secrets,
             logging=ecs.LogDriver.aws_logs(log_group=api_log_group, stream_prefix="api"),

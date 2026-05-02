@@ -1,8 +1,9 @@
-from pathlib import Path
 import os
+from pathlib import Path
+
+import dj_database_url
 import structlog
 from dotenv import load_dotenv
-import dj_database_url
 
 # BASE_DIR is backend/. The .env file lives one level up at the repo root.
 BASE_DIR = Path(__file__).resolve().parent.parent
