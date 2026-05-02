@@ -57,12 +57,22 @@ MIDDLEWARE = [
 # Database
 # ---------------------------------------------------------------------------
 
-DATABASES = {
-    "default": dj_database_url.config(
-        env="DATABASE_URL",
-        conn_max_age=600,
+# Local dev: DATABASE_URL in .env (e.g. postgres://user:pass@localhost/dbname)
+# Production: individual vars injected by ECS from Secrets Manager / task env
+if "DATABASE_URL" in os.environ:
+    _db_url = os.environ["DATABASE_URL"]
+else:
+    from urllib.parse import quote_plus
+
+    _db_url = (
+        f"postgres://{quote_plus(os.environ['DB_USER'])}"
+        f":{quote_plus(os.environ['DB_PASSWORD'])}"
+        f"@{os.environ['DB_HOST']}"
+        f":{os.environ.get('DB_PORT', '5432')}"
+        f"/{os.environ['DB_NAME']}"
     )
-}
+
+DATABASES = {"default": dj_database_url.parse(_db_url, conn_max_age=600)}
 
 # ---------------------------------------------------------------------------
 # Sessions (cookie-based auth)

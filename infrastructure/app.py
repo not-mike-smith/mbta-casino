@@ -1,19 +1,23 @@
 #!/usr/bin/env python3
 import os
-from dotenv import load_dotenv
-import aws_cdk as cdk
 
-from infrastructure.infrastructure_stack import InfrastructureStack
+import aws_cdk as cdk
+from dotenv import load_dotenv
+
+from infrastructure.app_stack import AppStack
+from infrastructure.deployment_bootstrap_stack import DeploymentBootstrapStack
 
 load_dotenv()
 
-app = cdk.App()
-InfrastructureStack(
-    app,
-    "InfrastructureStack",
-    env=cdk.Environment(
-        account=os.getenv("CDK_DEFAULT_ACCOUNT"), region=os.getenv("CDK_DEFAULT_REGION")
-    ),
+env = cdk.Environment(
+    account=os.getenv("CDK_DEFAULT_ACCOUNT"),
+    region=os.getenv("CDK_DEFAULT_REGION"),
 )
+
+app = cdk.App()
+
+bootstrap = DeploymentBootstrapStack(app, "DeploymentBootstrapStack", env=env)
+
+AppStack(app, "AppStack", repository=bootstrap.repository, env=env)
 
 app.synth()
