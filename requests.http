@@ -1,0 +1,99 @@
+### MBTA Casino — API Collection
+### Extension: REST Client (humao.rest-client)
+###
+### REST Client stores session cookies automatically in a per-workspace jar.
+### Run "Register / re-issue session" first — the cookie carries through all
+### subsequent requests. You'll need to re-run it after restarting VS Code.
+
+@baseUrl = http://localhost:8000/api/v1
+@contentType = application/json
+
+
+# ── Auth ─────────────────────────────────────────────────────────────────────
+
+### Register / re-issue session  ← run this first
+POST {{baseUrl}}/auth/register
+Content-Type: {{contentType}}
+
+{
+  "email": "test@example.com"
+}
+
+###
+
+### Whoami
+GET {{baseUrl}}/auth/me
+
+###
+
+### Logout
+POST {{baseUrl}}/auth/logout
+Content-Type: {{contentType}}
+
+
+# ── Routes & Stations ─────────────────────────────────────────────────────────
+
+### List all routes
+GET {{baseUrl}}/routes
+
+###
+
+### List all stations
+GET {{baseUrl}}/stations
+
+###
+
+### List stations on the Red Line
+GET {{baseUrl}}/stations?route_id=Red
+
+###
+
+### List stations on the Green-B branch
+GET {{baseUrl}}/stations?route_id=Green-B
+
+
+# ── Predictions ───────────────────────────────────────────────────────────────
+### Station IDs are stable after seeding (run manage.py sync_stations).
+### Park Street = 8, Downtown Crossing = 9, South Station = 10
+
+### Predictions at Park Street (Red + all Green branches)
+GET {{baseUrl}}/stations/8/predictions
+
+###
+
+### Predictions at Downtown Crossing (Red + Orange)
+GET {{baseUrl}}/stations/9/predictions
+
+###
+
+### Predictions at South Station (Red)
+GET {{baseUrl}}/stations/10/predictions
+
+###
+
+### Single prediction status — replace {id} with an id from the list above
+GET {{baseUrl}}/predictions/168/status
+
+
+# ── Bets ─────────────────────────────────────────────────────────────────────
+### Not yet implemented — stubs for when the endpoints land.
+
+### Place a bet
+# POST {{baseUrl}}/bets
+# Content-Type: {{contentType}}
+#
+# {
+#   "prediction_id": 168,
+#   "direction": "BEFORE",
+#   "amount": 100
+# }
+
+###
+
+### Active bet
+# GET {{baseUrl}}/bets/active
+
+###
+
+### Bet history
+# GET {{baseUrl}}/bets/history
