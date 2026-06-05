@@ -3,6 +3,7 @@ from celery import shared_task
 from django.conf import settings
 from django.utils import timezone
 
+from betting.resolution import resolve_bets_for_arrived_predictions
 from mbta.client import MbtaApiError, MbtaClient
 from mbta.models import TrainPrediction
 from stations.models import Station
@@ -61,8 +62,12 @@ def poll_all_station_predictions() -> None:
             predicted_arrival__lte=now,
         ).exclude(mbta_prediction_id__in=live_ids)
 
+        arrived_ids = list(arrived_qs.values_list("id", flat=True))
         count = arrived_qs.update(has_arrived=True, actual_arrival=now)
         arrived_total += count
+
+        if arrived_ids:
+            resolve_bets_for_arrived_predictions(arrived_ids, now)
 
     logger.info(
         "predictions_polled",
