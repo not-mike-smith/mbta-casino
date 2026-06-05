@@ -18,6 +18,21 @@ DEBUG = os.environ.get("DJANGO_DEBUG", "false").lower() == "true"
 
 ALLOWED_HOSTS = os.environ.get("DJANGO_ALLOWED_HOSTS", "localhost 127.0.0.1").split()
 
+# In ECS, the ALB health checker uses the container's private IP as the Host
+# header. Fetch it from the task metadata service and allow it so Django doesn't
+# reject health check requests with a 400 DisallowedHost error.
+_ecs_metadata_uri = os.environ.get("ECS_CONTAINER_METADATA_URI_V4")
+if _ecs_metadata_uri:
+    try:
+        import json
+        import urllib.request
+        with urllib.request.urlopen(f"{_ecs_metadata_uri}/task", timeout=2) as _r:
+            for _c in json.loads(_r.read()).get("Containers", []):
+                for _n in _c.get("Networks", []):
+                    ALLOWED_HOSTS += _n.get("IPv4Addresses", [])
+    except Exception:
+        pass
+
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 ROOT_URLCONF = "mbta_casino.urls"

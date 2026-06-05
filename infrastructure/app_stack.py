@@ -220,6 +220,7 @@ class AppStack(Stack):
             security_groups=[ecs_sg],
             assign_public_ip=True,
             vpc_subnets=ecs_subnets,
+            circuit_breaker=ecs.DeploymentCircuitBreaker(rollback=True),
         )
 
         ecs.FargateService(
@@ -245,10 +246,10 @@ class AppStack(Stack):
             health_check=elbv2.HealthCheck(
                 path="/health_check",
                 healthy_http_codes="200",
-                interval=Duration.seconds(30),
+                interval=Duration.seconds(10),
                 timeout=Duration.seconds(5),
                 healthy_threshold_count=2,
-                unhealthy_threshold_count=5,
+                unhealthy_threshold_count=2,
             ),
         )
 
