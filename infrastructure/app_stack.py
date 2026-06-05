@@ -32,8 +32,10 @@ class AppStack(Stack):
         # Network
         # -----------------------------------------------------------------------
 
-        # Default VPC layout: public subnets (ALB), private subnets (ECS/RDS/Redis)
-        vpc = ec2.Vpc(self, "Vpc", max_azs=2)
+        # ECS runs in public subnets with public IPs — no NAT Gateway needed.
+        # Security groups still control all inbound access; this is safe for a demo app.
+        # RDS and Redis stay in private subnets (intra-VPC routing reaches them fine).
+        vpc = ec2.Vpc(self, "Vpc", max_azs=2, nat_gateways=0)
 
         # ECS tasks security group — ingress from ALB added after ALB is created
         ecs_sg = ec2.SecurityGroup(self, "EcsSg", vpc=vpc, description="ECS tasks")
@@ -206,6 +208,9 @@ class AppStack(Stack):
         # ECS Services
         # -----------------------------------------------------------------------
 
+        # assign_public_ip=True lets tasks reach ECR and the MBTA API without a NAT Gateway.
+        ecs_subnets = ec2.SubnetSelection(subnet_type=ec2.SubnetType.PUBLIC)
+
         api_service = ecs.FargateService(
             self,
             "ApiService",
@@ -213,6 +218,8 @@ class AppStack(Stack):
             task_definition=api_task_def,
             desired_count=1,
             security_groups=[ecs_sg],
+            assign_public_ip=True,
+            vpc_subnets=ecs_subnets,
         )
 
         ecs.FargateService(
@@ -222,6 +229,8 @@ class AppStack(Stack):
             task_definition=celery_task_def,
             desired_count=1,
             security_groups=[ecs_sg],
+            assign_public_ip=True,
+            vpc_subnets=ecs_subnets,
         )
 
         # -----------------------------------------------------------------------
