@@ -60,7 +60,7 @@ class AppStack(Stack):
             ),
             instance_type=ec2.InstanceType.of(ec2.InstanceClass.T3, ec2.InstanceSize.MICRO),
             vpc=vpc,
-            vpc_subnets=ec2.SubnetSelection(subnet_type=ec2.SubnetType.PRIVATE_WITH_EGRESS),
+            vpc_subnets=ec2.SubnetSelection(subnet_type=ec2.SubnetType.PRIVATE_ISOLATED),
             security_groups=[rds_sg],
             database_name="mbta_casino",
             # CDK generates a random password and stores it in Secrets Manager
@@ -77,7 +77,7 @@ class AppStack(Stack):
         # -----------------------------------------------------------------------
 
         private_subnet_ids = vpc.select_subnets(
-            subnet_type=ec2.SubnetType.PRIVATE_WITH_EGRESS
+            subnet_type=ec2.SubnetType.PRIVATE_ISOLATED
         ).subnet_ids
 
         redis_subnet_group = elasticache.CfnSubnetGroup(
