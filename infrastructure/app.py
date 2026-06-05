@@ -16,8 +16,8 @@ env = cdk.Environment(
 
 app = cdk.App()
 
-bootstrap = DeploymentBootstrapStack(app, "DeploymentBootstrapStack", env=env)
+bootstrap = DeploymentBootstrapStack(app, "MbtaCasinoBootstrapStack", env=env)
 
-AppStack(app, "AppStack", repository=bootstrap.repository, env=env)
+AppStack(app, "MbtaCasinoAppStack", repository=bootstrap.repository, env=env)
 
 app.synth()
