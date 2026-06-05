@@ -78,22 +78,22 @@ GET {{baseUrl}}/predictions/168/status
 # ── Bets ─────────────────────────────────────────────────────────────────────
 ### Not yet implemented — stubs for when the endpoints land.
 
-### Place a bet
-# POST {{baseUrl}}/bets
-# Content-Type: {{contentType}}
-#
-# {
-#   "prediction_id": 168,
-#   "direction": "BEFORE",
-#   "amount": 100
-# }
+### Place a bet  ← replace prediction_id with one from a predictions response
+POST {{baseUrl}}/bets
+Content-Type: {{contentType}}
+
+{
+  "prediction_id": 1895,
+  "direction": "BEFORE",
+  "amount": 100
+}
 
 ###
 
-### Active bet
-# GET {{baseUrl}}/bets/active
+### Active bet (returns null if none)
+GET {{baseUrl}}/bets/active
 
 ###
 
-### Bet history
-# GET {{baseUrl}}/bets/history
+### Bet history (paginated resolved bets)
+GET {{baseUrl}}/bets/history

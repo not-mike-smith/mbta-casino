@@ -4,4 +4,5 @@ urlpatterns = [
     path("", include("users.urls")),
     path("", include("stations.urls")),
     path("", include("mbta.urls")),
+    path("", include("betting.urls")),
 ]
