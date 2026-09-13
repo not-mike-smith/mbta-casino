@@ -1,6 +1,9 @@
 #!/bin/bash
 # Build, push, and deploy the backend to ECS.
 # Usage: ./deploy.sh
+#
+# PAUSED (2026-09): MbtaCasinoAppStack has been destroyed to save ~$90/month, so the
+# cluster/service names below no longer exist. See notes/2026-09-cost-reduction.md.
 set -euo pipefail
 
 export DOCKER_HOST=unix://${HOME}/.docker/desktop/docker.sock
